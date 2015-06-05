@@ -10,6 +10,7 @@ include 'init.asm'
 include 'io.asm'
 
 include 'buffer_util.asm'
+include 'fsm.asm'
 
 include 'find_emails.asm'
 include '../gen/char_table.asm'

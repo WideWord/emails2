@@ -112,13 +112,24 @@ proc prepare_buffer_to_recognition uses ax bx
 endp
 
 proc recognize_email uses ax dx
-	mov ah, 0x2
-	mov dl, '*'
-	int 0x21
+	
+	stdcall find_email_start
+	cmp ax, 0
+	je .fail
+	mov bx, ax
+	stdcall find_email_end
+	cmp ax, 0
+	je .fail
 
-	inc word [search_pos]
+	stdcall store_email, bx, ax
+
+	mov [search_pos], ax
+
+	ret
+
+.fail:
+	inc [search_pos]
 	stdcall normalize_search_pos
-
 	ret
 endp
 
@@ -139,5 +150,28 @@ proc normalize_search_pos
 		cmp word [search_pos], buffer_in_1.start
 		jl .l
 		ret
+
+endp
+
+proc store_email uses si di ax dx, st, en
+	mov si, [st]
+	mov di, [en]
+	.loop_start:
+		cmp si, di
+		je .exit
+		lodsb
+		norm_si_forward
+		mov dl, al
+		mov ah, 0x2
+		int 0x21
+	jmp .loop_start
+	.exit:
+	mov ah, 0x2
+	mov dl, 13
+	int 0x21
+	mov dl, 10
+	int 0x21
+
+	ret
 
 endp
