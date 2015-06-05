@@ -14,11 +14,14 @@ prg_start:
 	stdcall get_timestamp
 	sub ax, bx
 	stdcall print_ms
+	stdcall print, .space
+	stdcall print_int, [email_counter]
 	ret
 
 
 .filename: rept 16 { db 0 }
 .out_filename db "out", 0
+.space db " ", 0
 
 
 exit:
@@ -28,3 +31,5 @@ exit:
 
 file_in dw 0
 file_out dw 0
+
+email_counter dw 0

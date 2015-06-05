@@ -12,6 +12,7 @@ proc find_emails uses ax
 		je .eof
 
 		.continue_scan:
+		stdcall normalize_search_pos
 		stdcall scan_for_atc
 		stdcall normalize_search_pos
 		bt ax, 0
@@ -19,8 +20,11 @@ proc find_emails uses ax
 		jmp .loop_start
 
 	.atc_found:
+		stdcall normalize_search_pos
 		stdcall prepare_buffer_to_recognition
+		stdcall normalize_search_pos
 		stdcall recognize_email
+		stdcall normalize_search_pos
 		jmp .continue_scan
 
 	.eof:
@@ -85,20 +89,19 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 .space db ' ', 0
 endp
 
-proc scan_for_atc uses cx dx di
+proc scan_for_atc uses cx dx di bx
 	mov di, [search_pos]
 	cmp di, word [data_end_ptr]
 	je .eob
-	jge .over_1
-		mov cx, [data_end_ptr]
-		sub cx, [search_pos]
-		jmp .over_2
-	.over_1:
-		mov ax, [search_pos]
-		sub ax, [data_end_ptr]
-		mov cx, 2 * buffer_size
-		sub cx, ax
-	.over_2:
+
+	
+	stdcall get_buffer_at_ptr, di
+	stdcall get_buffer_end, ax
+	mov cx, ax
+	sub cx, di
+
+	cmp cx, 0
+	je .eob
 
 	mov di, [search_pos]
 	mov al, '@'
@@ -106,15 +109,22 @@ proc scan_for_atc uses cx dx di
 	repne scasb
 	je .found
 
+	norm_forward di
+
+
 	mov [search_pos], di
 	mov ax, 0
 	ret
 .found:
 	sub di, 1
+	norm_backward di
 	mov [search_pos], di
 	mov ax, 1
 	ret
 .eob:
+	stdcall get_buffer_at_ptr, [search_pos]
+	stdcall get_buffer_end, ax
+	mov [search_pos], ax
 	mov ax, 0
 	ret
 endp
@@ -132,7 +142,9 @@ proc prepare_buffer_to_recognition uses ax bx
 	ret
 endp
 
-proc recognize_email uses ax dx
+proc recognize_email uses ax dx bx
+	inc word [email_counter]
+
 	stdcall find_email_start
 	cmp ax, 0
 	je .fail
@@ -143,7 +155,7 @@ proc recognize_email uses ax dx
 
 	stdcall store_email, bx, ax
 
-	mov [search_pos], ax
+	inc [search_pos]
 	stdcall normalize_search_pos
 
 	ret
