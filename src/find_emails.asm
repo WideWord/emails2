@@ -1,15 +1,16 @@
 
 data_end_ptr dw 0
-search_pos dw 0
+search_pos dw buffer_in_1.start
 
 proc find_emails
 	
-	.loop_start
+	.loop_start:
 		stdcall get_buffer_at_ptr, word [search_pos]
 		stdcall make_buffer_avaliable, ax
 		cmp ax, 0
 		je .eof
 
+		.continue_scan:
 		stdcall scan_for_atc
 		bt ax, 0
 		jc .atc_found
@@ -18,17 +19,19 @@ proc find_emails
 	.atc_found:
 		stdcall prepare_buffer_to_recognition
 		stdcall recognize_email
-		jmp .loop_start
+		jmp .continue_scan
 
 	.eof:
-		jmp $
+		ret
 endp
 
 proc make_buffer_avaliable uses bx cx dx, buffer_id
-	cmp [buffer_id], [.last_loaded_buffer]
+	mov dx, [buffer_id]
+	cmp dx, word [.last_loaded_buffer]
 	je .already_loaded
 
-	
+	mov word [.last_loaded_buffer], dx
+
 	mov bx, [file_in]
 	mov cx, buffer_size
 	stdcall get_buffer_start, [buffer_id]
@@ -47,19 +50,24 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 	ret
 
 .already_loaded:
+	stdcall get_buffer_end, dx
+	cmp ax, [data_end_ptr]
+	jne .eof
+
 	mov ax, 2
 	ret
 .eof:
 	mov ax, 0
 	ret
 
-.last_loaded_buffer dw 0
+.last_loaded_buffer dw 0xFF
 endp
 
 proc scan_for_atc uses cx dx di
-	cmp word [search_pos], word [data_end_ptr]
+	mov di, [search_pos]
+	cmp di, word [data_end_ptr]
 	je .eob
-	jl .over_1
+	jge .over_1
 		mov cx, [data_end_ptr]
 		sub cx, [search_pos]
 		jmp .over_2
@@ -81,6 +89,7 @@ proc scan_for_atc uses cx dx di
 	mov ax, 0
 	ret
 .found:
+	sub di, 1
 	mov [search_pos], di
 	mov ax, 1
 	ret
@@ -95,14 +104,14 @@ proc prepare_buffer_to_recognition uses ax bx
 	stdcall get_buffer_end, ax
 	sub ax, max_domain_size
 	cmp ax, [search_pos]
-	jl @f
+	jg @f
 		xor bx, 1
 		stdcall make_buffer_avaliable, bx
 	@@:
 	ret
 endp
 
-proc reconginze_email uses ax dx
+proc recognize_email uses ax dx
 	mov ah, 0x2
 	mov dl, '*'
 	int 0x21

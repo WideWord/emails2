@@ -21,7 +21,7 @@ endp
 
 proc get_buffer_at_ptr, pointer
 	cmp [pointer], buffer_in_1.end
-	jl @f
+	jge @f
 		mov ax, 0
 		ret
 	@@:
