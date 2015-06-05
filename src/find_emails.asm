@@ -2,7 +2,7 @@
 data_end_ptr dw 0
 search_pos dw buffer_in_1.start
 
-proc find_emails
+proc find_emails uses ax
 	
 	.loop_start:
 		stdcall normalize_search_pos
@@ -32,11 +32,12 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 	cmp dx, word [.last_loaded_buffer]
 	je .already_loaded
 
-	stdcall print_int, [buffer_id]
-	stdcall print, .space
-	stdcall print_hex, [search_pos]
-	stdcall print, .buffer_load_str
-
+	if buf_debug
+		stdcall print_int, [buffer_id]
+		stdcall print, .space
+		stdcall print_hex, [search_pos]
+		stdcall print, .buffer_load_str
+	end if
 
 	mov word [.last_loaded_buffer], dx
 
@@ -59,10 +60,12 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 
 .already_loaded:
 
-	stdcall print_int, [buffer_id]
-	stdcall print, .space
-	stdcall print_hex, [search_pos]
-	stdcall print, .buffer_rej_str
+	if buf_debug
+		stdcall print_int, [buffer_id]
+		stdcall print, .space
+		stdcall print_hex, [search_pos]
+		stdcall print, .buffer_rej_str
+	end if
 
 	stdcall get_buffer_end, dx
 	cmp ax, [data_end_ptr]
@@ -104,7 +107,6 @@ proc scan_for_atc uses cx dx di
 	je .found
 
 	mov [search_pos], di
-	assert_eq word [search_pos], word [data_end_ptr]
 	mov ax, 0
 	ret
 .found:

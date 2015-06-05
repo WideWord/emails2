@@ -8,6 +8,7 @@ include 'debug.asm'
 
 include 'init.asm'
 include 'io.asm'
+include 'time.asm'
 
 include 'buffer_util.asm'
 include 'fsm.asm'

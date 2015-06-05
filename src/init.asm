@@ -5,10 +5,21 @@ prg_start:
 	mov [file_in], ax
 	stdcall write_file, .out_filename
 	mov [file_out], ax
-	jmp find_emails
+
+	stdcall get_timestamp
+
+	stdcall find_emails
+
+	mov bx, ax
+	stdcall get_timestamp
+	sub ax, bx
+	stdcall print_ms
+	ret
+
 
 .filename: rept 16 { db 0 }
 .out_filename db "out", 0
+
 
 exit:
 	mov ax, 0x4C00
