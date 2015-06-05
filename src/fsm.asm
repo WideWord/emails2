@@ -13,7 +13,53 @@ macro norm_forward x {
 	@@:
 }
 
-proc find_email_start uses si cx bx
+macro state name, is_forward, is_ok {
+name:
+	lodsb
+	mov ah, al
+	xlatb
+	if is_forward
+		norm_forward si
+		cmp si, [data_end_ptr]
+		je find_email_end.eof
+	else
+		norm_backward si
+	end if
+
+	if is_ok
+		mov dx, si
+	end if
+
+	dec cx
+	cmp cx, 0
+	if is_forward
+		je find_email_end.fail
+	else
+		je find_email_start.fail
+	end if
+
+}
+
+macro when cond, st {
+	bt ax, cond
+	jc st
+}
+
+macro when_not cond, st {
+	bt ax, cond
+	jnc st
+}
+
+macro when_eq char, st {
+	cmp ah, char
+	je st
+}
+
+macro otherwise st {
+	jmp st
+}
+
+proc find_email_start uses si cx bx dx
 
 	mov si, [search_pos]
 	sub si, 1
@@ -23,15 +69,14 @@ proc find_email_start uses si cx bx
 	std
 	mov bx, char_table
 
+	mov dx, 0
 
-	.loop_start:
-		lodsb
-		xlatb
-		norm_backward si
-		bt ax, ct_is_allowed
-		jnc .exit
-	loop .loop_start
+	jmp b_init
 	.exit:
+
+	cmp dx, 0
+	je .fail
+	mov si, dx
 
 	add si, 2
 	norm_forward si
@@ -47,7 +92,30 @@ proc find_email_start uses si cx bx
 	ret
 endp
 
-proc find_email_end uses si cx bx
+state b_init, 0, 0
+	when ct_is_username_safe_symbol, b_mid
+	when ct_is_dot, find_email_start.exit
+	when_eq '@', find_email_start.fail
+	when ct_is_space_symbol, find_email_start.exit
+	otherwise find_email_start.fail
+
+state b_mid, 0, 1
+	when ct_is_username_safe_symbol, b_mid
+	when ct_is_dot, b_after_dot
+	when_eq '@', find_email_start.fail
+	when ct_is_space_symbol, find_email_start.exit
+	otherwise find_email_start.fail
+
+state b_after_dot, 0, 0
+	when ct_is_username_safe_symbol, b_mid
+	when ct_is_dot, find_email_start.fail
+	when_eq '@', find_email_start.fail
+	when ct_is_space_symbol, find_email_start.exit
+	otherwise find_email_start.fail
+
+
+
+proc find_email_end uses si cx bx dx
 
 	mov si, [search_pos]
 	add si, 1
@@ -58,18 +126,14 @@ proc find_email_end uses si cx bx
 	cld
 	mov bx, char_table
 
-	.loop_start:
-		lodsb
-		xlatb
-		norm_forward si
-		bt ax, ct_is_allowed
-		jnc .exit
+	mov dx, 0
 
-		cmp si, [data_end_ptr]
-		je .eof
-
-	loop .loop_start
+	jmp f_init
 	.exit:
+
+	cmp dx, 0
+	je .fail
+	mov si, dx
 
 	dec si
 	norm_backward si
@@ -84,3 +148,34 @@ proc find_email_end uses si cx bx
 	mov ax, 0
 	ret
 endp
+
+state f_init, 1, 0
+	when ct_is_domain_safe_symbol, f_mid
+	when_eq '@', find_email_end.fail
+	when ct_is_space_symbol, find_email_end.exit
+	otherwise find_email_end.fail
+
+state f_mid, 1, 1
+	when ct_is_domain_safe_symbol, f_mid
+	when ct_is_dot, f_after_dot
+	when ct_is_dash, f_after_dash
+	when_eq '@', find_email_end.fail
+	when ct_is_space_symbol, find_email_end.exit
+	otherwise find_email_end.fail
+
+state f_after_dot, 1, 0
+	when ct_is_domain_safe_symbol, f_mid
+	when ct_is_dot, find_email_end.fail
+	when ct_is_dash, find_email_end.fail
+	when_eq '@', find_email_end.fail
+	when ct_is_space_symbol, find_email_end.exit
+	otherwise find_email_end.fail
+
+state f_after_dash, 1, 0
+	when ct_is_domain_safe_symbol, f_mid
+	when ct_is_dot, find_email_end.fail
+	when ct_is_dash, f_after_dash
+	when_eq '@', find_email_end.fail
+	when ct_is_space_symbol, find_email_end.exit
+	otherwise find_email_end.fail
+

@@ -100,6 +100,7 @@ proc scan_for_atc uses cx dx di bx
 	mov cx, ax
 	sub cx, di
 
+
 	cmp cx, 0
 	je .eob
 
@@ -146,24 +147,20 @@ proc recognize_email uses ax dx bx
 	inc word [email_counter]
 
 	stdcall find_email_start
-	cmp ax, 0
-	je .fail
 	mov bx, ax
 	stdcall find_email_end
 	cmp ax, 0
 	je .fail
+	cmp bx, 0
+	je .fail
 
 	stdcall store_email, bx, ax
-
-	inc [search_pos]
-	stdcall normalize_search_pos
-
-	ret
 
 .fail:
 	inc [search_pos]
 	stdcall normalize_search_pos
 	ret
+
 endp
 
 proc normalize_search_pos
