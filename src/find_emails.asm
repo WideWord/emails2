@@ -100,6 +100,16 @@ proc scan_for_atc uses cx dx di bx
 	mov cx, ax
 	sub cx, di
 
+	mov bx, [data_end_ptr]
+	cmp bx, di
+	jg @f
+		add bx, 2 * buffer_size
+	@@:
+	sub bx, di
+	cmp bx, cx
+	jg @f
+		mov cx, bx
+	@@:
 
 	cmp cx, 0
 	je .eob
