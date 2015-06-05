@@ -96,14 +96,8 @@ proc scan_for_atc uses cx dx di bx
 
 	
 	stdcall get_buffer_at_ptr, di
-	mov ax, bx
 	stdcall get_buffer_end, ax
 	mov cx, ax
-	stdcall get_buffer_at_ptr, [data_end_ptr]
-	cmp ax, bx
-	jne @f
-		mov cx, [data_end_ptr]
-	@@:
 	sub cx, di
 
 
