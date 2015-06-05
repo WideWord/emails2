@@ -116,7 +116,6 @@ proc scan_for_atc uses cx dx di bx
 
 	norm_forward di
 
-
 	mov [search_pos], di
 	mov ax, 0
 	ret
@@ -159,6 +158,9 @@ proc recognize_email uses ax dx bx
 	je .fail
 
 	stdcall store_email, bx, ax
+
+	mov [search_pos], ax
+	ret
 
 .fail:
 	inc [search_pos]
