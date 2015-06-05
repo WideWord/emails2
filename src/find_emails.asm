@@ -146,24 +146,20 @@ proc recognize_email uses ax dx bx
 	inc word [email_counter]
 
 	stdcall find_email_start
-	cmp ax, 0
-	je .fail
 	mov bx, ax
 	stdcall find_email_end
 	cmp ax, 0
 	je .fail
+	cmp bx, 0
+	je .fail
 
 	stdcall store_email, bx, ax
-
-	inc [search_pos]
-	stdcall normalize_search_pos
-
-	ret
 
 .fail:
 	inc [search_pos]
 	stdcall normalize_search_pos
 	ret
+
 endp
 
 proc normalize_search_pos

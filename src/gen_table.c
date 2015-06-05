@@ -25,6 +25,9 @@ void atm(const char* chars, unsigned char bit) {
 #define IS_USERNAME_SAFE_SYMBOL 4
 #define IS_DOMAIN_SAFE_SYMBOL 8
 #define IS_DIGIT 16
+#define IS_DOT 32
+#define IS_DASH 64
+#define IS_SPACE_SYMBOL 128
 
 int main() {
 
@@ -34,11 +37,13 @@ int main() {
 
 	range('a', 'z', IS_CHAR | IS_ALLOWED | IS_USERNAME_SAFE_SYMBOL | IS_DOMAIN_SAFE_SYMBOL);
 	range('A', 'Z', IS_CHAR | IS_ALLOWED | IS_USERNAME_SAFE_SYMBOL | IS_DOMAIN_SAFE_SYMBOL);
-	range('0', '9', IS_CHAR | IS_ALLOWED | IS_USERNAME_SAFE_SYMBOL);
+	range('0', '9', IS_CHAR | IS_ALLOWED | IS_USERNAME_SAFE_SYMBOL | IS_DOMAIN_SAFE_SYMBOL);
 	range('0', '9', IS_DIGIT);
 
 	atm("@._-", IS_ALLOWED);
 	atm("!#$%&'*+-/=?^_`{|}~", IS_ALLOWED | IS_USERNAME_SAFE_SYMBOL);
+	at('.', IS_DOT);
+	at('-', IS_DASH);
 
 	printf("char_table:\n");	
 	for (int i = 0; i < 256; ++i) {
