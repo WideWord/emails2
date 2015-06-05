@@ -30,6 +30,10 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 	cmp dx, word [.last_loaded_buffer]
 	je .already_loaded
 
+	stdcall print_int, [buffer_id]
+	stdcall print, .buffer_load_str
+
+
 	mov word [.last_loaded_buffer], dx
 
 	mov bx, [file_in]
@@ -50,6 +54,10 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 	ret
 
 .already_loaded:
+
+	stdcall print_int, [buffer_id]
+	stdcall print, .buffer_rej_str
+
 	stdcall get_buffer_end, dx
 	cmp ax, [data_end_ptr]
 	jne .eof
@@ -61,6 +69,8 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 	ret
 
 .last_loaded_buffer dw 0xFF
+.buffer_load_str db " buffer load", 13, 10, 0
+.buffer_rej_str db " buffer rej", 13, 10, 0
 endp
 
 proc scan_for_atc uses cx dx di
@@ -121,7 +131,7 @@ proc recognize_email uses ax dx
 	cmp ax, 0
 	je .fail
 
-	stdcall store_email, bx, ax
+	;stdcall store_email, bx, ax
 
 	mov [search_pos], ax
 
