@@ -89,22 +89,15 @@ proc scan_for_atc uses cx dx di bx
 	cmp di, word [data_end_ptr]
 	je .eob
 
-	
-	stdcall get_buffer_at_ptr, di
-	stdcall get_buffer_end, ax
-	mov cx, ax
-	sub cx, di
-
-	mov bx, [data_end_ptr]
-	cmp bx, di
-	jg @f
-		add bx, 2 * buffer_size
-	@@:
-	sub bx, di
-	cmp bx, cx
-	jg @f
-		mov cx, bx
-	@@:
+	mov cx, [data_end_ptr]
+	cmp cx, di
+	jl .end_less_pos
+		sub cx, di
+	jmp .end_less_pos_over
+	.end_less_pos:
+		mov cx, buffer_in_2.end
+		sub cx, di
+	.end_less_pos_over:
 
 	cmp cx, 0
 	je .eob
@@ -148,8 +141,6 @@ proc prepare_buffer_to_recognition uses ax bx
 endp
 
 proc recognize_email uses ax dx bx
-	inc word [email_counter]
-
 	stdcall find_email_start
 	mov bx, ax
 	stdcall find_email_end
@@ -173,6 +164,8 @@ endp
 output_pos dw buffer_out.start
 
 proc store_email uses si di ax dx, st, en
+	inc word [email_counter]
+
 	mov si, [st]
 	mov dx, [en]
 	mov di, [output_pos]
