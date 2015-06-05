@@ -148,8 +148,6 @@ proc prepare_buffer_to_recognition uses ax bx
 endp
 
 proc recognize_email uses ax dx bx
-	inc word [email_counter]
-
 	stdcall find_email_start
 	mov bx, ax
 	stdcall find_email_end
@@ -173,6 +171,8 @@ endp
 output_pos dw buffer_out.start
 
 proc store_email uses si di ax dx, st, en
+	inc word [email_counter]
+
 	mov si, [st]
 	mov dx, [en]
 	mov di, [output_pos]
