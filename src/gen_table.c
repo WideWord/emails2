@@ -29,6 +29,7 @@ void atm(const char* chars, unsigned char bit) {
 #define IS_DASH 64
 #define IS_SPACE_SYMBOL 128
 
+
 int main() {
 
 	for (int i = 0; i < 256; ++i) {
@@ -44,6 +45,9 @@ int main() {
 	atm("!#$%&'*+-/=?^_`{|}~", IS_ALLOWED | IS_USERNAME_SAFE_SYMBOL);
 	at('.', IS_DOT);
 	at('-', IS_DASH);
+
+	atm(" \t\n\r:", IS_SPACE_SYMBOL);
+
 
 	printf("char_table:\n");	
 	for (int i = 0; i < 256; ++i) {

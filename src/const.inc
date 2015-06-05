@@ -9,3 +9,4 @@ ct_is_domain_safe_symbol = 3
 ct_is_digit = 4
 ct_is_dot = 5
 ct_is_dash = 6
+ct_is_space_symbol = 7

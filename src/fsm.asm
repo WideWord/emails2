@@ -96,19 +96,22 @@ state b_init, 0, 0
 	when ct_is_username_safe_symbol, b_mid
 	when ct_is_dot, find_email_start.exit
 	when_eq '@', find_email_start.fail
-	otherwise find_email_start.exit
+	when ct_is_space_symbol, find_email_start.exit
+	otherwise find_email_start.fail
 
 state b_mid, 0, 1
 	when ct_is_username_safe_symbol, b_mid
 	when ct_is_dot, b_after_dot
 	when_eq '@', find_email_start.fail
-	otherwise find_email_start.exit
+	when ct_is_space_symbol, find_email_start.exit
+	otherwise find_email_start.fail
 
 state b_after_dot, 0, 0
 	when ct_is_username_safe_symbol, b_mid
-	when ct_is_dot, find_email_start.exit
+	when ct_is_dot, find_email_start.fail
 	when_eq '@', find_email_start.fail
-	otherwise find_email_start.exit
+	when ct_is_space_symbol, find_email_start.exit
+	otherwise find_email_start.fail
 
 
 
@@ -149,26 +152,30 @@ endp
 state f_init, 1, 0
 	when ct_is_domain_safe_symbol, f_mid
 	when_eq '@', find_email_end.fail
-	otherwise find_email_end.exit
+	when ct_is_space_symbol, find_email_end.exit
+	otherwise find_email_end.fail
 
 state f_mid, 1, 1
 	when ct_is_domain_safe_symbol, f_mid
 	when ct_is_dot, f_after_dot
-	when ct_is_dash, f_mid
+	when ct_is_dash, f_after_dash
 	when_eq '@', find_email_end.fail
-	otherwise find_email_end.exit
+	when ct_is_space_symbol, find_email_end.exit
+	otherwise find_email_end.fail
 
 state f_after_dot, 1, 0
 	when ct_is_domain_safe_symbol, f_mid
-	when ct_is_dot, find_email_end.exit
-	when ct_is_dash, find_email_end.exit
+	when ct_is_dot, find_email_end.fail
+	when ct_is_dash, find_email_end.fail
 	when_eq '@', find_email_end.fail
-	otherwise find_email_end.exit
+	when ct_is_space_symbol, find_email_end.exit
+	otherwise find_email_end.fail
 
 state f_after_dash, 1, 0
 	when ct_is_domain_safe_symbol, f_mid
-	when ct_is_dot, find_email_end.exit
+	when ct_is_dot, find_email_end.fail
 	when ct_is_dash, f_after_dash
 	when_eq '@', find_email_end.fail
-	otherwise find_email_end.exit
+	when ct_is_space_symbol, find_email_end.exit
+	otherwise find_email_end.fail
 
