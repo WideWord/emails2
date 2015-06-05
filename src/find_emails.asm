@@ -5,29 +5,24 @@ search_pos dw buffer_in_1.start
 proc find_emails uses ax
 	
 	.loop_start:
-		stdcall normalize_search_pos
 		stdcall get_buffer_at_ptr, word [search_pos]
 		stdcall make_buffer_avaliable, ax
 		cmp ax, 0
 		je .eof
 
 		.continue_scan:
-		stdcall normalize_search_pos
 		stdcall scan_for_atc
-		stdcall normalize_search_pos
 		bt ax, 0
 		jc .atc_found
 		jmp .loop_start
 
 	.atc_found:
-		stdcall normalize_search_pos
 		stdcall prepare_buffer_to_recognition
-		stdcall normalize_search_pos
 		stdcall recognize_email
-		stdcall normalize_search_pos
 		jmp .continue_scan
 
 	.eof:
+		stdcall flush_output
 		ret
 endp
 
@@ -122,7 +117,6 @@ proc scan_for_atc uses cx dx di bx
 
 	norm_forward di
 
-
 	mov [search_pos], di
 	mov ax, 0
 	ret
@@ -166,52 +160,58 @@ proc recognize_email uses ax dx bx
 
 	stdcall store_email, bx, ax
 
+	mov [search_pos], ax
+	ret
+
 .fail:
 	inc [search_pos]
-	stdcall normalize_search_pos
+	norm_forward word [search_pos]
 	ret
 
 endp
 
-proc normalize_search_pos
-	cmp word [search_pos], buffer_in_2.end
-	jge .g
-	cmp word [search_pos], buffer_in_1.start
-	jl .l
-	ret
-
-	.g:	
-		sub word [search_pos], 2 * buffer_size
-		cmp word [search_pos], buffer_in_2.end
-		jge .g
-		ret
-	.l:
-		add word [search_pos], 2 * buffer_size
-		cmp word [search_pos], buffer_in_1.start
-		jl .l
-		ret
-
-endp
+output_pos dw buffer_out.start
 
 proc store_email uses si di ax dx, st, en
 	mov si, [st]
-	mov di, [en]
+	mov dx, [en]
+	mov di, [output_pos]
+
 	.loop_start:
-		cmp si, di
-		je .exit
-		lodsb
+		movsb
+
 		norm_forward si
-		mov dl, al
-		mov ah, 0x2
-		int 0x21
-	jmp .loop_start
-	.exit:
-	mov ah, 0x2
-	mov dl, 13
-	int 0x21
-	mov dl, 10
-	int 0x21
 
+		cmp si, dx
+		jne .loop_start
+
+	mov al, 13
+	stosb
+	mov al, 10
+	stosb
+
+	mov [output_pos], di
+
+	cmp di, buffer_out.end - max_email_size
+	jl @f
+		stdcall flush_output
+	@@:
 	ret
-
 endp
+
+proc flush_output uses ax bx cx dx
+	mov ah, 0x40
+	mov bx, [file_out]
+	mov cx, [output_pos]
+	sub cx, buffer_out.start
+	cmp cx, 0
+	je .exit
+	mov dx, buffer_out.start
+	int 0x21
+	mov [output_pos], buffer_out.start
+	.exit:
+	ret
+endp
+
+
+
