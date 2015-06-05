@@ -60,7 +60,7 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 
 	stdcall get_buffer_end, dx
 	cmp ax, [data_end_ptr]
-	jne .eof
+	je .eof
 
 	mov ax, 2
 	ret
