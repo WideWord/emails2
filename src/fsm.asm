@@ -13,13 +13,30 @@ macro norm_si_forward {
 	@@:
 }
 
+macro norm_backward x {
+	cmp x, buffer_in_1.start - 1
+	jg @f
+		add x, 2 * buffer_size
+	@@:
+}
+
+macro norm_forward x {
+	cmp x, buffer_in_2.end
+	jl @f
+		sub x, 2 * buffer_size
+	@@:
+}
 
 proc find_email_start uses si cx bx
 	
+	;mov ax, [search_pos]
+	;sub ax, 64
+	;norm_backward ax
+	;ret
+
 	mov si, [search_pos]
 	sub si, 1
-
-	norm_si_back
+	norm_backward si
 
 	mov cx, max_username_size
 	std
@@ -29,16 +46,18 @@ proc find_email_start uses si cx bx
 	.loop_start:
 		lodsb
 		xlatb
-		norm_si_back
+		norm_backward si
 		bt ax, ct_is_allowed
 		jnc .exit
 	loop .loop_start
 	.exit:
 
 	add si, 2
-	norm_si_forward
-	cmp si, [search_pos]
-	je .fail
+	norm_forward si
+	norm_backward si
+
+	;cmp si, [search_pos]
+	;je .fail
 
 	mov ax, si
 	ret
@@ -48,6 +67,11 @@ proc find_email_start uses si cx bx
 endp
 
 proc find_email_end uses si cx bx
+
+	;mov ax, [search_pos]
+	;add ax, 2
+	;norm_forward ax
+	;ret
 
 	mov si, [search_pos]
 	add si, 1
@@ -72,6 +96,7 @@ proc find_email_end uses si cx bx
 	.exit:
 
 	dec si
+	norm_backward si
 	.eof:
 	cmp si, [search_pos]
 	je .fail

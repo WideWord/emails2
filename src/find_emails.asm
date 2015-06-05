@@ -5,6 +5,7 @@ search_pos dw buffer_in_1.start
 proc find_emails
 	
 	.loop_start:
+		stdcall normalize_search_pos
 		stdcall get_buffer_at_ptr, word [search_pos]
 		stdcall make_buffer_avaliable, ax
 		cmp ax, 0
@@ -12,6 +13,7 @@ proc find_emails
 
 		.continue_scan:
 		stdcall scan_for_atc
+		stdcall normalize_search_pos
 		bt ax, 0
 		jc .atc_found
 		jmp .loop_start
@@ -31,6 +33,8 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 	je .already_loaded
 
 	stdcall print_int, [buffer_id]
+	stdcall print, .space
+	stdcall print_hex, [search_pos]
 	stdcall print, .buffer_load_str
 
 
@@ -56,10 +60,14 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 .already_loaded:
 
 	stdcall print_int, [buffer_id]
+	stdcall print, .space
+	stdcall print_hex, [search_pos]
 	stdcall print, .buffer_rej_str
 
 	stdcall get_buffer_end, dx
 	cmp ax, [data_end_ptr]
+	jne .eof
+	cmp [search_pos], ax
 	je .eof
 
 	mov ax, 2
@@ -71,6 +79,7 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 .last_loaded_buffer dw 0xFF
 .buffer_load_str db " buffer load", 13, 10, 0
 .buffer_rej_str db " buffer rej", 13, 10, 0
+.space db ' ', 0
 endp
 
 proc scan_for_atc uses cx dx di
@@ -122,7 +131,6 @@ proc prepare_buffer_to_recognition uses ax bx
 endp
 
 proc recognize_email uses ax dx
-	
 	stdcall find_email_start
 	cmp ax, 0
 	je .fail
@@ -131,9 +139,10 @@ proc recognize_email uses ax dx
 	cmp ax, 0
 	je .fail
 
-	;stdcall store_email, bx, ax
+	stdcall store_email, bx, ax
 
 	mov [search_pos], ax
+	stdcall normalize_search_pos
 
 	ret
 
