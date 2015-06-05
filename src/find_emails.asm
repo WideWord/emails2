@@ -193,7 +193,7 @@ proc store_email uses si di ax dx, st, en
 		cmp si, di
 		je .exit
 		lodsb
-		norm_si_forward
+		norm_forward si
 		mov dl, al
 		mov ah, 0x2
 		int 0x21
