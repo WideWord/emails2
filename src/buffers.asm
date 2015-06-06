@@ -1,7 +1,7 @@
 
 out_buffer_cur dw buffer_out.start
 
-buffer_size = 0x2000
+buffer_size = 0x2650
 
 struc buffer start {
 	.start = start
