@@ -13,16 +13,22 @@ macro norm_forward x {
 	@@:
 }
 
-macro state name, is_forward, is_ok {
+macro state name, is_forward, is_ok, check_eob_forward, check_eob_backward, check_eof, prefix {
 name:
 	lodsb
 	xlatb
 	if is_forward
-		norm_forward si
-		cmp si, [data_end_ptr]
-		je find_email_end.eof
+		if check_eob_forward
+			norm_forward si
+		end if
+		if check_eof
+			cmp si, [data_end_ptr]
+			je prefix#find_email_end_eof
+		end if
 	else
-		norm_backward si
+		if check_eob_backward
+			norm_backward si
+		end if
 	end if
 
 	if is_ok
@@ -32,9 +38,9 @@ name:
 	dec cx
 	cmp cx, 0
 	if is_forward
-		je find_email_end.fail
+		je prefix#find_email_end_fail
 	else
-		je find_email_start.fail
+		je prefix#find_email_start_fail
 	end if
 
 }
@@ -53,113 +59,139 @@ macro otherwise st {
 	jmp st
 }
 
-proc find_email_start uses si cx bx dx
+macro b_fsm_inst prefix, check_eob_forward, check_eob_backward, check_eof {
 
-	mov si, [search_pos]
-	sub si, 1
-	norm_backward si
+	state prefix#b_init, 0, 0, check_eob_forward, check_eob_backward, check_eof, prefix
+		when ct_is_username_safe_symbol, prefix#b_mid
+		when ct_is_dot, prefix#find_email_start_exit
+		when ct_is_space_symbol, prefix#find_email_start_exit
+		otherwise prefix#find_email_start_fail
 
-	mov cx, max_username_size
-	std
-	mov bx, char_table
+	state prefix#b_mid, 0, 1, check_eob_forward, check_eob_backward, check_eof, prefix
+		when ct_is_username_safe_symbol, prefix#b_mid
+		when ct_is_dot, prefix#b_after_dot
+		when ct_is_space_symbol, prefix#find_email_start_exit
+		otherwise prefix#find_email_start_fail
 
-	mov dx, 0
+	state prefix#b_after_dot, 0, 0, check_eob_forward, check_eob_backward, check_eof, prefix
+		when ct_is_username_safe_symbol, prefix#b_mid
+		when ct_is_dot, prefix#find_email_start_fail
+		when ct_is_space_symbol, prefix#find_email_start_exit
+		otherwise prefix#find_email_start_fail
 
-	jmp b_init
-	.exit:
+}
 
-	cmp dx, 0
-	je .fail
-	mov si, dx
+macro find_email_start_inst prefix, check_eob_backward {
+	proc prefix#find_email_start uses si cx bx dx
 
-	add si, 2
-	norm_forward si
-	norm_backward si
+		mov si, [search_pos]
+		sub si, 1
+		norm_backward si
 
-	mov ax, si
-	ret
-.fail:
-	mov ax, 0
-	ret
-endp
+		mov cx, max_username_size
+		std
+		mov bx, char_table
 
-state b_init, 0, 0
-	when ct_is_username_safe_symbol, b_mid
-	when ct_is_dot, find_email_start.exit
-	when ct_is_space_symbol, find_email_start.exit
-	otherwise find_email_start.fail
+		mov dx, 0
 
-state b_mid, 0, 1
-	when ct_is_username_safe_symbol, b_mid
-	when ct_is_dot, b_after_dot
-	when ct_is_space_symbol, find_email_start.exit
-	otherwise find_email_start.fail
+		jmp prefix#b_init
+		prefix#find_email_start_exit:
 
-state b_after_dot, 0, 0
-	when ct_is_username_safe_symbol, b_mid
-	when ct_is_dot, find_email_start.fail
-	when ct_is_space_symbol, find_email_start.exit
-	otherwise find_email_start.fail
+		cmp dx, 0
+		je prefix#find_email_start_fail
+		mov si, dx
+
+		add si, 2
+		norm_forward si
+		norm_backward si
+
+		mov ax, si
+		ret
+	prefix#find_email_start_fail:
+		mov ax, 0
+		ret
+	endp
+
+	b_fsm_inst prefix, 0, check_eob_backward, 0
+}
+
+find_email_start_inst inst_no_check_eob_, 0
+find_email_start_inst inst_check_eob_, 1
 
 
 
-proc find_email_end uses si cx bx dx
+macro f_fsm_isnt prefix, check_eob_forward, check_eob_backward, check_eof {
+	
+	state prefix#f_init, 1, 0, check_eob_forward, check_eob_backward, check_eof, prefix
+		when ct_is_domain_safe_symbol, prefix#f_mid
+		when ct_is_space_symbol, prefix#find_email_end_exit
+		otherwise prefix#find_email_end_fail
 
-	mov si, [search_pos]
-	add si, 1
+	state prefix#f_mid, 1, 1, check_eob_forward, check_eob_backward, check_eof, prefix
+		when ct_is_domain_safe_symbol, prefix#f_mid
+		when ct_is_dot, prefix#f_after_dot
+		when ct_is_dash, prefix#f_after_dash
+		when ct_is_space_symbol, prefix#find_email_end_exit
+		otherwise prefix#find_email_end_fail
 
-	norm_forward si
+	state prefix#f_after_dot, 1, 0, check_eob_forward, check_eob_backward, check_eof, prefix
+		when ct_is_domain_safe_symbol, prefix#f_mid
+		when ct_is_dot, prefix#find_email_end_fail
+		when ct_is_dash, prefix#find_email_end_fail
+		when ct_is_space_symbol, prefix#find_email_end_exit
+		otherwise prefix#find_email_end_fail
 
-	mov cx, max_domain_size
-	cld
-	mov bx, char_table
+	state prefix#f_after_dash, 1, 0, check_eob_forward, check_eob_backward, check_eof, prefix
+		when ct_is_domain_safe_symbol, prefix#f_mid
+		when ct_is_dot, prefix#find_email_end_fail
+		when ct_is_dash, prefix#f_after_dash
+		when ct_is_space_symbol, prefix#find_email_end_exit
+		otherwise prefix#find_email_end_fail
+}
 
-	mov dx, 0
+macro find_email_end_inst prefix, check_eob_forward, check_eof {
 
-	jmp f_init
-	.exit:
+	proc prefix#find_email_end uses si cx bx dx
 
-	cmp dx, 0
-	je .fail
-	mov si, dx
+		mov si, [search_pos]
+		add si, 1
 
-	dec si
-	norm_backward si
-	.eof:
-	cmp si, [search_pos]
-	je .fail
+		norm_forward si
 
-	mov ax, si
-	ret
+		mov cx, max_domain_size
+		cld
+		mov bx, char_table
 
-.fail:
-	mov ax, 0
-	ret
-endp
+		mov dx, 0
 
-state f_init, 1, 0
-	when ct_is_domain_safe_symbol, f_mid
-	when ct_is_space_symbol, find_email_end.exit
-	otherwise find_email_end.fail
+		jmp prefix#f_init
+		prefix#find_email_end_exit:
 
-state f_mid, 1, 1
-	when ct_is_domain_safe_symbol, f_mid
-	when ct_is_dot, f_after_dot
-	when ct_is_dash, f_after_dash
-	when ct_is_space_symbol, find_email_end.exit
-	otherwise find_email_end.fail
+		cmp dx, 0
+		je prefix#find_email_end_fail
+		mov si, dx
 
-state f_after_dot, 1, 0
-	when ct_is_domain_safe_symbol, f_mid
-	when ct_is_dot, find_email_end.fail
-	when ct_is_dash, find_email_end.fail
-	when ct_is_space_symbol, find_email_end.exit
-	otherwise find_email_end.fail
+		dec si
+		norm_backward si
+		prefix#find_email_end_eof:
+		cmp si, [search_pos]
+		je prefix#find_email_end_fail
 
-state f_after_dash, 1, 0
-	when ct_is_domain_safe_symbol, f_mid
-	when ct_is_dot, find_email_end.fail
-	when ct_is_dash, f_after_dash
-	when ct_is_space_symbol, find_email_end.exit
-	otherwise find_email_end.fail
+		mov ax, si
+		ret
+
+	prefix#find_email_end_fail:
+		mov ax, 0
+		ret
+
+	endp
+
+	f_fsm_isnt prefix, check_eob_forward, 0, check_eof
+
+}
+
+;find_email_end_inst inst_ff_, 0, 0
+find_email_end_inst inst_ft_, 0, 1
+;find_email_end_inst inst_tf_, 1, 0
+find_email_end_inst inst_tt_, 1, 1
 

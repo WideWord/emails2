@@ -39,7 +39,7 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 		stdcall print, .buffer_load_str
 	end if
 
-	mov word [.last_loaded_buffer], dl
+	mov [.last_loaded_buffer], dl
 
 	mov bx, [file_in]
 	mov cx, buffer_size
@@ -135,7 +135,6 @@ proc prepare_buffer_to_recognition uses ax bx
 	sub ax, max_domain_size
 	cmp ax, [search_pos]
 	jg @f
-		xor bh, bh
 		xor bl, 1
 		stdcall make_buffer_avaliable, bx
 	@@:
@@ -143,9 +142,22 @@ proc prepare_buffer_to_recognition uses ax bx
 endp
 
 proc recognize_email uses ax dx bx
-	stdcall find_email_start
+	cmp word [search_pos], buffer_in_1.start + max_username_size
+	jg .no_check_backward
+		stdcall inst_check_eob_find_email_start
+	jmp .no_check_backward_over
+	.no_check_backward:
+		stdcall inst_no_check_eob_find_email_start
+	.no_check_backward_over:
 	mov bx, ax
-	stdcall find_email_end
+
+	cmp word [search_pos], buffer_in_2.end - max_domain_size
+	jl .no_check_forward
+		stdcall inst_tt_find_email_end
+	jmp .no_check_forward_over
+	.no_check_forward:
+		stdcall inst_ft_find_email_end
+	.no_check_forward_over:
 	cmp ax, 0
 	je .fail
 	cmp bx, 0
