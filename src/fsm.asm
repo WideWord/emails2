@@ -86,7 +86,9 @@ macro find_email_start_inst prefix, check_eob_backward {
 
 		mov si, [search_pos]
 		sub si, 1
-		norm_backward si
+		if check_eob_backward
+			norm_backward si
+		end if
 
 		mov cx, max_username_size
 		std
@@ -102,8 +104,9 @@ macro find_email_start_inst prefix, check_eob_backward {
 		mov si, dx
 
 		add si, 2
-		norm_forward si
-		norm_backward si
+		if check_eob_backward
+			norm_forward si
+		end if
 
 		mov ax, si
 		ret
@@ -156,7 +159,9 @@ macro find_email_end_inst prefix, check_eob_forward, check_eof {
 		mov si, [search_pos]
 		add si, 1
 
-		norm_forward si
+		if check_eob_forward
+			norm_forward si
+		end if
 
 		mov cx, max_domain_size
 		cld
@@ -172,7 +177,9 @@ macro find_email_end_inst prefix, check_eob_forward, check_eof {
 		mov si, dx
 
 		dec si
-		norm_backward si
+		if check_eob_forward
+			norm_backward si
+		end if
 		prefix#find_email_end_eof:
 		cmp si, [search_pos]
 		je prefix#find_email_end_fail
@@ -190,8 +197,10 @@ macro find_email_end_inst prefix, check_eob_forward, check_eof {
 
 }
 
-;find_email_end_inst inst_ff_, 0, 0
+find_email_end_inst inst_ff_, 0, 0
 find_email_end_inst inst_ft_, 0, 1
-;find_email_end_inst inst_tf_, 1, 0
+find_email_end_inst inst_tf_, 1, 0
 find_email_end_inst inst_tt_, 1, 1
 
+stdcall inst_ff_find_email_end
+stdcall inst_tf_find_email_end

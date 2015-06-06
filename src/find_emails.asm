@@ -1,6 +1,7 @@
 
 data_end_ptr dw 0
 search_pos dw buffer_in_1.start
+eof_flag db 0
 
 proc find_emails uses ax
 	
@@ -48,6 +49,11 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 	mov ah, 0x3F
 
 	int 0x21
+
+	cmp ax, cx
+	je .over_eof_flag
+		mov byte [eof_flag], 1
+	.over_eof_flag:
 
 	cmp ax, 0
 	je .eof
@@ -153,10 +159,26 @@ proc recognize_email uses ax dx bx
 
 	cmp word [search_pos], buffer_in_2.end - max_domain_size
 	jl .no_check_forward
-		stdcall inst_tt_find_email_end
+
+		test byte [eof_flag], 1
+		je .check_eof_1
+			stdcall inst_tf_find_email_end
+		jmp .check_eof_1_over
+		.check_eof_1:
+			stdcall inst_tt_find_email_end
+		.check_eof_1_over:
+
 	jmp .no_check_forward_over
 	.no_check_forward:
-		stdcall inst_ft_find_email_end
+
+		test byte [eof_flag], 1
+		je .check_eof_2
+			stdcall inst_ff_find_email_end
+		jmp .check_eof_2_over
+		.check_eof_2:
+			stdcall inst_ft_find_email_end
+		.check_eof_2_over:
+
 	.no_check_forward_over:
 	cmp ax, 0
 	je .fail
