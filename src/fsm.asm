@@ -49,11 +49,6 @@ macro when_not cond, st {
 	jnc st
 }
 
-macro when_eq char, st {
-	cmp ah, char
-	je st
-}
-
 macro otherwise st {
 	jmp st
 }
@@ -80,9 +75,6 @@ proc find_email_start uses si cx bx dx
 	add si, 2
 	norm_forward si
 	norm_backward si
-
-	;cmp si, [search_pos]
-	;je .fail
 
 	mov ax, si
 	ret

@@ -5,7 +5,8 @@ search_pos dw buffer_in_1.start
 proc find_emails uses ax
 	
 	.loop_start:
-		stdcall get_buffer_at_ptr, word [search_pos]
+		get_buffer_at_ptr_inl al, word [search_pos]
+		xor ah, ah
 		stdcall make_buffer_avaliable, ax
 		cmp ax, 0
 		je .eof
@@ -28,7 +29,7 @@ endp
 
 proc make_buffer_avaliable uses bx cx dx, buffer_id
 	mov dx, [buffer_id]
-	cmp dx, word [.last_loaded_buffer]
+	cmp dl, byte [.last_loaded_buffer]
 	je .already_loaded
 
 	if buf_debug
@@ -38,11 +39,11 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 		stdcall print, .buffer_load_str
 	end if
 
-	mov word [.last_loaded_buffer], dx
+	mov word [.last_loaded_buffer], dl
 
 	mov bx, [file_in]
 	mov cx, buffer_size
-	stdcall get_buffer_start, [buffer_id]
+	stdcall get_buffer_start, dx
 	mov dx, ax
 	mov ah, 0x3F
 
@@ -78,7 +79,7 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 	mov ax, 0
 	ret
 
-.last_loaded_buffer dw 0xFF
+.last_loaded_buffer db 0xFF
 .buffer_load_str db " buffer load", 13, 10, 0
 .buffer_rej_str db " buffer rej", 13, 10, 0
 .space db ' ', 0
@@ -128,13 +129,14 @@ proc scan_for_atc uses cx dx di bx
 endp
 
 proc prepare_buffer_to_recognition uses ax bx
-	stdcall get_buffer_at_ptr, word [search_pos]
-	mov bx, ax
+	get_buffer_at_ptr_inl al, word [search_pos]
+	mov bl, al
 	stdcall get_buffer_end, ax
 	sub ax, max_domain_size
 	cmp ax, [search_pos]
 	jg @f
-		xor bx, 1
+		xor bh, bh
+		xor bl, 1
 		stdcall make_buffer_avaliable, bx
 	@@:
 	ret

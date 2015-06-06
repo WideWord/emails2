@@ -19,8 +19,17 @@ proc get_buffer_end, buffer_id
 		ret
 endp
 
+macro get_buffer_at_ptr_inl result, pointer {
+	cmp pointer, buffer_in_1.end
+	setge result
+}
+
 proc get_buffer_at_ptr, pointer
 	cmp [pointer], buffer_in_1.end
+	;setge al
+	;xor ah, ah
+	;ret
+
 	jge @f
 		mov ax, 0
 		ret
@@ -28,3 +37,4 @@ proc get_buffer_at_ptr, pointer
 		mov ax, 1
 		ret
 endp
+
