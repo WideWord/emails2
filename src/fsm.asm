@@ -121,6 +121,13 @@ macro find_email_start_inst prefix, check_eob_backward {
 find_email_start_inst inst_no_check_eob_, 0
 find_email_start_inst inst_check_eob_, 1
 
+macro find_email_start_call check_eob {
+	if check_eob
+		stdcall inst_check_eob_find_email_start
+	else
+		stdcall inst_no_check_eob_find_email_start
+	end if
+}
 
 
 macro f_fsm_isnt prefix, check_eob_forward, check_eob_backward, check_eof {
@@ -202,5 +209,18 @@ find_email_end_inst inst_ft_, 0, 1
 find_email_end_inst inst_tf_, 1, 0
 find_email_end_inst inst_tt_, 1, 1
 
-stdcall inst_ff_find_email_end
-stdcall inst_tf_find_email_end
+macro find_email_end_call check_eob_forward, check_eof {
+	if check_eob_forward
+		if check_eof
+			stdcall inst_tt_find_email_end
+		else
+			stdcall inst_tf_find_email_end
+		end if
+	else
+		if check_eof
+			stdcall inst_ft_find_email_end
+		else
+			stdcall inst_ff_find_email_end
+		end if
+	end if
+}

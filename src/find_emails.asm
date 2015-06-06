@@ -134,78 +134,6 @@ proc scan_for_atc uses cx dx di bx
 	ret
 endp
 
-proc prepare_buffer_to_recognition uses ax bx
-	get_buffer_at_ptr_inl al, word [search_pos]
-	mov bl, al
-	stdcall get_buffer_end, ax
-	sub ax, max_domain_size
-	cmp ax, [search_pos]
-	jg @f
-		xor bl, 1
-		stdcall make_buffer_avaliable, bx
-	@@:
-	ret
-endp
-
-proc recognize_email uses ax dx bx
-	cmp word [search_pos], buffer_in_1.start + max_username_size
-	jg .no_check_backward
-		stdcall inst_check_eob_find_email_start
-	jmp .no_check_backward_over
-	.no_check_backward:
-		stdcall inst_no_check_eob_find_email_start
-	.no_check_backward_over:
-	mov bx, ax
-
-	cmp word [search_pos], buffer_in_2.end - max_domain_size
-	jl .no_check_forward
-
-		test byte [eof_flag], 1
-		je .check_eof_1
-			stdcall inst_tf_find_email_end
-		jmp .check_eof_1_over
-		.check_eof_1:
-			stdcall inst_tt_find_email_end
-		.check_eof_1_over:
-
-		cmp ax, 0
-		je .fail
-		cmp bx, 0
-		je .fail
-
-		stdcall store_email_check_eob, bx, ax
-
-	jmp .no_check_forward_over
-	.no_check_forward:
-
-		test byte [eof_flag], 1
-		je .check_eof_2
-			stdcall inst_ff_find_email_end
-		jmp .check_eof_2_over
-		.check_eof_2:
-			stdcall inst_ft_find_email_end
-		.check_eof_2_over:
-
-		cmp ax, 0
-		je .fail
-		cmp bx, 0
-		je .fail
-
-		stdcall store_email_no_check_eob, bx, ax
-
-	.no_check_forward_over:
-
-	mov [search_pos], ax
-	ret
-
-.fail:
-	inc [search_pos]
-	norm_forward word [search_pos]
-	ret
-
-endp
-
-
 
 output_pos dw buffer_out.start
 
@@ -242,6 +170,102 @@ macro store_email_inst postfix, check_eob {
 
 store_email_inst _no_check_eob, 0
 store_email_inst _check_eob, 1
+
+macro store_email_call check_eob, from, to {
+	if check_eob
+		stdcall store_email_check_eob, from, to
+	else
+		stdcall store_email_no_check_eob, from, to
+	end if
+}
+
+
+
+proc prepare_buffer_to_recognition uses ax bx
+	get_buffer_at_ptr_inl al, word [search_pos]
+	mov bl, al
+	stdcall get_buffer_end, ax
+	sub ax, max_domain_size
+	cmp ax, [search_pos]
+	jg @f
+		xor bl, 1
+		stdcall make_buffer_avaliable, bx
+	@@:
+	ret
+endp
+
+macro recognize_email_inst postfix, check_eob_forward, check_eob_backward, check_eof {
+	proc recognize_email#postfix uses ax dx bx
+		find_email_start_call check_eob_backward
+		mov bx, ax
+		find_email_end_call check_eob_forward, check_eof
+		cmp ax, 0
+		je .fail
+		cmp bx, 0
+		je .fail
+		store_email_call check_eob_forward, bx, ax
+		mov [search_pos], ax
+		ret
+	.fail:
+		inc [search_pos]
+		norm_forward word [search_pos]
+		ret
+
+	endp
+}
+
+recognize_email_inst _000, 0, 0, 0
+recognize_email_inst _001, 0, 0, 1
+recognize_email_inst _010, 0, 1, 0
+recognize_email_inst _011, 0, 1, 1
+recognize_email_inst _100, 1, 0, 0
+recognize_email_inst _101, 1, 0, 1
+recognize_email_inst _110, 1, 1, 0
+recognize_email_inst _111, 1, 1, 1
+
+macro recognize_email_inst_call check_eob_forward, check_eob_backward, check_eof {
+	stdcall recognize_email_#check_eob_forward#check_eob_backward#check_eof
+}
+
+proc recognize_email
+	cmp [search_pos], buffer_in_1.start + max_username_size
+	jl .cb
+		cmp [search_pos], buffer_in_2.end - max_domain_size
+		jg .nbcf
+			test [eof_flag], 1
+			je .nbnfce
+				recognize_email_inst_call 0, 0, 0
+				ret
+			.nbnfce:
+				recognize_email_inst_call 0, 0, 1
+				ret
+		.nbcf:
+			test [eof_flag], 1
+			je .nbcfce
+				recognize_email_inst_call 1, 0, 0
+				ret
+			.nbcfce:
+				recognize_email_inst_call 1, 0, 1
+				ret
+	.cb:
+		cmp [search_pos], buffer_in_2.end - max_domain_size
+		jg .cbcf
+			test [eof_flag], 1
+			je .cbnfce
+				recognize_email_inst_call 0, 1, 0
+				ret
+			.cbnfce:
+				recognize_email_inst_call 0, 1, 1
+				ret
+		.cbcf:
+			test [eof_flag], 1
+			je .cbcfce
+				recognize_email_inst_call 1, 1, 0
+				ret
+			.cbcfce:
+				recognize_email_inst_call 1, 1, 1
+				ret
+endp
 
 proc flush_output uses ax bx cx dx
 	mov ah, 0x40
