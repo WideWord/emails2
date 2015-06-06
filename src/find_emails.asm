@@ -168,6 +168,13 @@ proc recognize_email uses ax dx bx
 			stdcall inst_tt_find_email_end
 		.check_eof_1_over:
 
+		cmp ax, 0
+		je .fail
+		cmp bx, 0
+		je .fail
+
+		stdcall store_email_check_eob, bx, ax
+
 	jmp .no_check_forward_over
 	.no_check_forward:
 
@@ -179,13 +186,14 @@ proc recognize_email uses ax dx bx
 			stdcall inst_ft_find_email_end
 		.check_eof_2_over:
 
-	.no_check_forward_over:
-	cmp ax, 0
-	je .fail
-	cmp bx, 0
-	je .fail
+		cmp ax, 0
+		je .fail
+		cmp bx, 0
+		je .fail
 
-	stdcall store_email, bx, ax
+		stdcall store_email_no_check_eob, bx, ax
+
+	.no_check_forward_over:
 
 	mov [search_pos], ax
 	ret
@@ -197,36 +205,43 @@ proc recognize_email uses ax dx bx
 
 endp
 
+
+
 output_pos dw buffer_out.start
 
-proc store_email uses si di ax dx, st, en
-	inc word [email_counter]
+macro store_email_inst postfix, check_eob {
+	proc store_email#postfix uses si di ax dx, st, en
+		inc word [email_counter]
 
-	mov si, [st]
-	mov dx, [en]
-	mov di, [output_pos]
+		mov si, [st]
+		mov dx, [en]
+		mov di, [output_pos]
 
-	.loop_start:
-		movsb
+		.loop_start:
+			movsb
 
-		norm_forward si
+			norm_forward si
 
-		cmp si, dx
-		jne .loop_start
+			cmp si, dx
+			jne .loop_start
 
-	mov al, 13
-	stosb
-	mov al, 10
-	stosb
+		mov al, 13
+		stosb
+		mov al, 10
+		stosb
 
-	mov [output_pos], di
+		mov [output_pos], di
 
-	cmp di, buffer_out.end - max_email_size
-	jl @f
-		stdcall flush_output
-	@@:
-	ret
-endp
+		cmp di, buffer_out.end - max_email_size
+		jl @f
+			stdcall flush_output
+		@@:
+		ret
+	endp
+}
+
+store_email_inst _no_check_eob, 0
+store_email_inst _check_eob, 1
 
 proc flush_output uses ax bx cx dx
 	mov ah, 0x40
