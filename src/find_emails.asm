@@ -3,6 +3,51 @@ data_end_ptr dw 0
 search_pos dw buffer_in_1.start
 eof_flag db 0
 
+
+
+macro scan_for_atc_inline {
+	mov di, [search_pos]
+	cmp di, word [data_end_ptr]
+	je .scan_for_atc_eob
+
+	mov cx, [data_end_ptr]
+	cmp cx, di
+	jl .scan_for_atc_end_less_pos
+		sub cx, di
+	jmp .scan_for_atc_end_less_pos_over
+	.scan_for_atc_end_less_pos:
+		mov cx, buffer_in_2.end
+		sub cx, di
+	.scan_for_atc_end_less_pos_over:
+
+	cmp cx, 0
+	je .scan_for_atc_eob
+
+	mov di, [search_pos]
+	mov al, '@'
+
+	repne scasb
+	je .scan_for_atc_found
+
+	norm_forward di
+
+	mov [search_pos], di
+	jmp .loop_start
+
+.scan_for_atc_found:
+	sub di, 1
+	norm_backward di
+	mov [search_pos], di
+	jmp .atc_found
+
+.scan_for_atc_eob:
+	stdcall get_buffer_at_ptr, [search_pos]
+	stdcall get_buffer_end, ax
+	mov [search_pos], ax
+	jmp .loop_start
+}
+
+
 proc find_emails uses ax
 	
 	.loop_start:
@@ -13,10 +58,7 @@ proc find_emails uses ax
 		je .eof
 
 		.continue_scan:
-		stdcall scan_for_atc
-		bt ax, 0
-		jc .atc_found
-		jmp .loop_start
+		scan_for_atc_inline
 
 	.atc_found:
 		stdcall prepare_buffer_to_recognition
@@ -91,48 +133,6 @@ proc make_buffer_avaliable uses bx cx dx, buffer_id
 .space db ' ', 0
 endp
 
-proc scan_for_atc uses cx dx di bx
-	mov di, [search_pos]
-	cmp di, word [data_end_ptr]
-	je .eob
-
-	mov cx, [data_end_ptr]
-	cmp cx, di
-	jl .end_less_pos
-		sub cx, di
-	jmp .end_less_pos_over
-	.end_less_pos:
-		mov cx, buffer_in_2.end
-		sub cx, di
-	.end_less_pos_over:
-
-	cmp cx, 0
-	je .eob
-
-	mov di, [search_pos]
-	mov al, '@'
-
-	repne scasb
-	je .found
-
-	norm_forward di
-
-	mov [search_pos], di
-	mov ax, 0
-	ret
-.found:
-	sub di, 1
-	norm_backward di
-	mov [search_pos], di
-	mov ax, 1
-	ret
-.eob:
-	stdcall get_buffer_at_ptr, [search_pos]
-	stdcall get_buffer_end, ax
-	mov [search_pos], ax
-	mov ax, 0
-	ret
-endp
 
 
 output_pos dw buffer_out.start
